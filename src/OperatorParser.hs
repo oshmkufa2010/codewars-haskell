@@ -63,11 +63,9 @@ parseOperators associativities termParser = do
                 R ops -> chainr1 nextTermParser (opParser ops)
                 NoAssociativity ops -> nextTermParser <|> do
                     left <- nextTermParser
-                    skipSpaces
-                    op <- choice ops
-                    skipSpaces
+                    op <- opParser ops
                     right <- nextTermParser
-                    return $ Op left op right
+                    return $ op left right
                 where
                     nextTermParser = parensParser <|> nextLevelParser
         in foldr folder (termParser >>= return . Term) associativities
