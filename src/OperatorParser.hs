@@ -57,21 +57,17 @@ parseOperators associativities termParser = do
             char ')'
             return term
         
-        normalParser assos = do
-            case assos of
-                (asso : nextAssos) ->
-                    case asso of
-                        L ops -> chainl1 nextTermParser (opParser ops)
-                        R ops -> chainr1 nextTermParser (opParser ops)
-                        NoAssociativity ops -> nextTermParser <|> do
-                            left <- nextTermParser
-                            skipSpaces
-                            op <- choice ops
-                            skipSpaces
-                            right <- nextTermParser
-                            return $ Op left op right
-                        where
-                            nextTermParser = parensParser <|> normalParser nextAssos
-
-                [] -> termParser >>= return . Term
-        in normalParser associativities
+        folder asso nextLevelParser = 
+            case asso of
+                L ops -> chainl1 nextTermParser (opParser ops)
+                R ops -> chainr1 nextTermParser (opParser ops)
+                NoAssociativity ops -> nextTermParser <|> do
+                    left <- nextTermParser
+                    skipSpaces
+                    op <- choice ops
+                    skipSpaces
+                    right <- nextTermParser
+                    return $ Op left op right
+                where
+                    nextTermParser = parensParser <|> nextLevelParser
+        in foldr folder (termParser >>= return . Term) associativities
