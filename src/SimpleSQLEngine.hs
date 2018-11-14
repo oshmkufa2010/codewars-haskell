@@ -3,6 +3,44 @@ module SimpleSQLEngine where
     import Text.Parsec
     import Data.Char
     import Control.Monad
+    import Data.List
+    import Data.Maybe
+    import Data.Either
+
+    movieDatabase = [ ( "movie"
+                      , [ [ ( "id", "1" ), ( "name", "Avatar"   ), ( "directorID", "1" ) ]
+                        , [ ( "id", "2" ), ( "name", "Titanic"  ), ( "directorID", "1" ) ]
+                        , [ ( "id", "3" ), ( "name", "Infamous" ), ( "directorID", "2" ) ]
+                        , [ ( "id", "4" ), ( "name", "Skyfall"  ), ( "directorID", "3" ) ]
+                        , [ ( "id", "5" ), ( "name", "Aliens"   ), ( "directorID", "1" ) ]
+                        ]
+                      )
+                    , ( "actor"
+                      , [ [ ( "id", "1" ), ( "name", "Leonardo DiCaprio" ) ]
+                        , [ ( "id", "2" ), ( "name", "Sigourney Weaver"  ) ]
+                        , [ ( "id", "3" ), ( "name", "Daniel Craig"      ) ]
+                        ]
+                      )
+                    , ( "director"
+                      , [ [ ( "id", "1" ), ( "name", "James Cameron"   ) ]
+                        , [ ( "id", "2" ), ( "name", "Douglas McGrath" ) ]
+                        , [ ( "id", "3" ), ( "name", "Sam Mendes"      ) ]
+                        ]
+                      )
+                    , ( "actor_to_movie"
+                      , [ [ ( "movieID", "1" ), ( "actorID", "2" ) ]
+                        , [ ( "movieID", "2" ), ( "actorID", "1" ) ]
+                        , [ ( "movieID", "3" ), ( "actorID", "2" ) ]
+                        , [ ( "movieID", "3" ), ( "actorID", "3" ) ]
+                        , [ ( "movieID", "4" ), ( "actorID", "3" ) ]
+                        , [ ( "movieID", "5" ), ( "actorID", "2" ) ]
+                        ]
+                      )
+                    ]
+ 
+       
+    sql = "Select movie.name, director.name From movie Join director On director.id = movie.directorID"
+
 
     -- ENBF grammar of sql:
     -- query         =  select, from, [ { ws, join } ],  [ ws, where ] ;
@@ -115,8 +153,61 @@ module SimpleSQLEngine where
             in chainl1 strP $ do
                     quotedValue <- between (try $ string "''") (try $ string "''") strP
                     return $ \a b -> a ++ "'" ++ quotedValue ++ "'" ++ b
+    
+    type Row = [(ColumnName, Const)]
+    type Relation = [(TableName, Row)]
+    type Table = (TableName, [Row])
+    type Database = [Table] 
 
-    sqlEngine :: [(String,[[(String,String)]])] -> String -> [[(String,String)]]
-    sqlEngine database = execute where
-      execute :: String -> [[(String,String)]]
-      execute query = undefined
+    findTable :: Database -> TableName -> Table
+    findTable database tableName = fromJust $ find ((== tableName) . (map toLower) . fst) database
+
+    findColumnValue :: Relation -> TableName -> ColumnName -> Const
+    findColumnValue relation tableName columnName =
+        let (_, row) = fromJust $ find ((== tableName) . (map toLower) . fst) relation
+            in snd $ fromJust $ find ((== columnName) . (map toLower) . fst) row 
+    
+    getValue :: Relation -> Value -> Const
+    getValue relation v =
+        case v of
+            ColumnIDValue (ColumnIDNode tableName columnName) -> findColumnValue relation tableName columnName
+            ConstValue constValue -> constValue
+    
+    evalValueTest :: Relation -> ValueTestNode -> Bool
+    evalValueTest relation (ValueTestNode v1 op v2) =
+        case op of
+            Eq -> v1' == v2'
+            Gt -> v1' > v2'
+            GtOrEq -> v1' >= v2'
+            Lt -> v1' < v2'
+            LtOrEq -> v1' <= v2'
+            NotEq -> v1' /= v2'
+        where
+            v1' = getValue relation v1
+            v2' = getValue relation v2
+
+    evalJoin :: Database -> [Relation] -> JoinNode -> [Relation]
+    evalJoin database relations (JoinNode tableName valueTestNode) = 
+        do
+            relation <- relations
+            row <- rows
+            guard $ evalValueTest (relation ++ [(tableName, row)]) valueTestNode
+            return $ relation ++ [(tableName, row)]
+        where (_, rows) = findTable database tableName
+
+    -- type Row = [(ColumnName, Const)]
+    -- type Relation = [(TableName, Row)]
+    -- type Table = (TableName, [Row])
+    -- type Database = [Table] 
+
+    evalQuery :: QueryNode -> Database -> [Row]
+    evalQuery (QueryNode (SelectNode columnNodes) (FromNode primaryTableName) joinNodes whereNode) database =
+        map (\relation -> (concatMap snd relation)) relations
+        where
+            (_, tableRows) = findTable database primaryTableName
+            relations = foldl (evalJoin database) [(map ((,) primaryTableName) tableRows)] joinNodes
+
+    -- sqlEngine :: Database -> String -> [Row]
+    -- sqlEngine database query = 
+    --     evalQuery queryNode database
+    --     where queryNode = (fromRight $ parse queryP "" query) :: QueryNode
