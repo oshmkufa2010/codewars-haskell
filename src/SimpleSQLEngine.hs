@@ -7,41 +7,6 @@ module SimpleSQLEngine where
     import Data.Maybe
     import Data.Either
 
-    movieDatabase = [ ( "movie"
-                      , [ [ ( "id", "1" ), ( "name", "Avatar"   ), ( "directorID", "1" ) ]
-                        , [ ( "id", "2" ), ( "name", "Titanic"  ), ( "directorID", "1" ) ]
-                        , [ ( "id", "3" ), ( "name", "Infamous" ), ( "directorID", "2" ) ]
-                        , [ ( "id", "4" ), ( "name", "Skyfall"  ), ( "directorID", "3" ) ]
-                        , [ ( "id", "5" ), ( "name", "Aliens"   ), ( "directorID", "1" ) ]
-                        ]
-                      )
-                    , ( "actor"
-                      , [ [ ( "id", "1" ), ( "name", "Leonardo DiCaprio" ) ]
-                        , [ ( "id", "2" ), ( "name", "Sigourney Weaver"  ) ]
-                        , [ ( "id", "3" ), ( "name", "Daniel Craig"      ) ]
-                        ]
-                      )
-                    , ( "director"
-                      , [ [ ( "id", "1" ), ( "name", "James Cameron"   ) ]
-                        , [ ( "id", "2" ), ( "name", "Douglas McGrath" ) ]
-                        , [ ( "id", "3" ), ( "name", "Sam Mendes"      ) ]
-                        ]
-                      )
-                    , ( "actor_to_movie"
-                      , [ [ ( "movieID", "1" ), ( "actorID", "2" ) ]
-                        , [ ( "movieID", "2" ), ( "actorID", "1" ) ]
-                        , [ ( "movieID", "3" ), ( "actorID", "2" ) ]
-                        , [ ( "movieID", "3" ), ( "actorID", "3" ) ]
-                        , [ ( "movieID", "4" ), ( "actorID", "3" ) ]
-                        , [ ( "movieID", "5" ), ( "actorID", "2" ) ]
-                        ]
-                      )
-                    ]
- 
-       
-    sql = "Select movie.name, director.name From movie Join director On director.id = movie.directorID"
-
-
     -- ENBF grammar of sql:
     -- query         =  select, from, [ { ws, join } ],  [ ws, where ] ;
     -- select        =  "SELECT ", column-id, [ { ", ", column-id } ] ;
@@ -199,15 +164,34 @@ module SimpleSQLEngine where
     -- type Relation = [(TableName, Row)]
     -- type Table = (TableName, [Row])
     -- type Database = [Table] 
+    -- data SelectNode = SelectNode [ColumnIDNode] 
+    -- data ColumnIDNode = ColumnIDNode TableName ColumnName
 
+    evalSelect :: [Relation] -> [ColumnIDNode] -> [Row]
+    evalSelect relations columnNodes = do
+        relation <- relations
+
+        return $ do
+            (ColumnIDNode selectTableName selectColumnName) <- columnNodes
+            (tableName, row) <- relation
+
+            guard $ (map toLower tableName) == selectTableName 
+
+            return $ head $ do
+                (columnName, value) <- row
+
+                guard $ (map toLower columnName) == selectColumnName 
+
+                return (tableName ++ "." ++ columnName, value)
+    
     evalQuery :: QueryNode -> Database -> [Row]
     evalQuery (QueryNode (SelectNode columnNodes) (FromNode primaryTableName) joinNodes whereNode) database =
-        map (\relation -> (concatMap snd relation)) relations
+        evalSelect relations columnNodes
         where
             (_, tableRows) = findTable database primaryTableName
-            relations = foldl (evalJoin database) [(map ((,) primaryTableName) tableRows)] joinNodes
+            relations = foldl (evalJoin database) (map (\row -> [(primaryTableName, row)]) tableRows) joinNodes
 
-    -- sqlEngine :: Database -> String -> [Row]
-    -- sqlEngine database query = 
-    --     evalQuery queryNode database
-    --     where queryNode = (fromRight $ parse queryP "" query) :: QueryNode
+    sqlEngine :: Database -> String -> [Row]
+    sqlEngine database query = 
+        evalQuery queryNode database
+        where queryNode = case parse queryP "" query of Right q -> q
