@@ -167,29 +167,37 @@ module SimpleSQLEngine where
     -- data SelectNode = SelectNode [ColumnIDNode] 
     -- data ColumnIDNode = ColumnIDNode TableName ColumnName
 
+    evalWhere :: [Relation] -> WhereNode -> [Relation]
+    evalWhere relations whereNode = 
+        case whereNode of
+            EmptyWhereNode -> relations
+            WhereNode valueTestNode -> do
+                relation <- relations
+                guard $ evalValueTest relation valueTestNode
+                return relation
+
     evalSelect :: [Relation] -> [ColumnIDNode] -> [Row]
     evalSelect relations columnNodes = do
         relation <- relations
 
         return $ do
             (ColumnIDNode selectTableName selectColumnName) <- columnNodes
+
             (tableName, row) <- relation
 
-            guard $ (map toLower tableName) == selectTableName 
+            (columnName, value) <- row
 
-            return $ head $ do
-                (columnName, value) <- row
+            guard $ (map toLower columnName) == selectColumnName && (map toLower tableName) == selectTableName 
 
-                guard $ (map toLower columnName) == selectColumnName 
+            return (tableName ++ "." ++ columnName, value)
 
-                return (tableName ++ "." ++ columnName, value)
-    
     evalQuery :: QueryNode -> Database -> [Row]
     evalQuery (QueryNode (SelectNode columnNodes) (FromNode primaryTableName) joinNodes whereNode) database =
-        evalSelect relations columnNodes
+        evalSelect relations' columnNodes
         where
             (_, tableRows) = findTable database primaryTableName
             relations = foldl (evalJoin database) (map (\row -> [(primaryTableName, row)]) tableRows) joinNodes
+            relations' = evalWhere relations whereNode
 
     sqlEngine :: Database -> String -> [Row]
     sqlEngine database query = 
