@@ -96,12 +96,9 @@ module SimpleSQLEngine where
     valueTestP = do
         value1 <- valueP 
         comparison <- between (char ' ') (char ' ') $ do
-            (string "=" >> return Eq)
-            <|> (string ">" >> return Gt)
-            <|> (string "<" >> return Lt)
-            <|> (string ">=" >> return GtOrEq)
-            <|> (string "<=" >> return LtOrEq)
-            <|> (string "<>" >> return NotEq)
+            (char '=' >> return Eq)
+            <|> (char '>' >> option Gt (char '=' >> return GtOrEq))
+            <|> (char '<' >> option Lt ((char '>' >> return NotEq) <|> (char '=' >> return LtOrEq)))
         value2 <- valueP 
         return $ ValueTestNode value1 comparison value2
     
