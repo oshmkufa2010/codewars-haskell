@@ -53,7 +53,7 @@ module SimpleSQLEngine where
 
     queryP :: Parsec String () QueryNode
     queryP = do
-        wsP
+        spaces
         selectNode <- selectP
         wsP
         fromNode <- fromP
