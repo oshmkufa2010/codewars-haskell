@@ -1,6 +1,6 @@
 # codewars-haskell-solutions
 
-- [x] [Simple SQL Engine](https://www.codewars.com/kata/5451712ea8a825a74f000863
+- [x] [Simple SQL Engine](https://www.codewars.com/kata/5451712ea8a825a74f000863)
 
 - [x] [Writing applicative parsers from scratch](https://www.codewars.com/kata/54f1fdb7f29358dd1f00015d)
 
