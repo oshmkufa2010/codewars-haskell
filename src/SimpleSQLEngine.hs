@@ -9,7 +9,7 @@ module SimpleSQLEngine where
 
     -- ENBF grammar of sql:
     -- query         =  select, from, [ { ws, join } ],  [ ws, where ] ;
-    -- select        =  "SELECT ", column-id, [ { ", ", column-id } ] ;
+    -- select        =  "SELECT ", column-id, [ { ",", column-id } ] ;
     -- from          =  "FROM ", table-name ;
     -- join          =  "JOIN ", table-name, " on ", value-test ;
     -- where         =  "WHERE ", value-test ;
@@ -49,14 +49,13 @@ module SimpleSQLEngine where
         columnName <- tableNameOrColumnNameP
         return $ ColumnIDNode tableName columnName 
 
-    wsP = many1 $ char ' ' <|> char '\n'
+    wsP = many1 space
 
     queryP :: Parsec String () QueryNode
     queryP = do
         selectNode <- selectP
         wsP
         fromNode <- fromP
-
         (joinNodes, whereNode) <- option ([], EmptyWhereNode) $ wsP >> do
             joinNodes' <- sepEndBy joinP wsP
             whereNode' <- option EmptyWhereNode whereP
@@ -66,39 +65,45 @@ module SimpleSQLEngine where
 
     selectP :: Parsec String () SelectNode
     selectP = do
-        stringWithoutCaseSensitive "select "
-        columnIDs <- sepBy1 columnIDP $ string ", "
+        stringWithoutCaseSensitive "select"
+        wsP
+        columnIDs <- sepBy1 columnIDP $ try $ spaces >> char ',' >> spaces
         return $ SelectNode columnIDs
     
     fromP :: Parsec String () FromNode
     fromP = do
-        stringWithoutCaseSensitive "from "
+        stringWithoutCaseSensitive "from"
+        wsP
         tableName <- tableNameOrColumnNameP 
         return $ FromNode tableName
     
     joinP :: Parsec String () JoinNode
     joinP = do
-        stringWithoutCaseSensitive "join "
+        stringWithoutCaseSensitive "join"
+        wsP
         tableName <- tableNameOrColumnNameP
-        char ' '
+        wsP
         stringWithoutCaseSensitive "on"
-        char ' '
+        wsP
         valueTestNode <- valueTestP
         return $ JoinNode tableName valueTestNode
         
     whereP :: Parsec String () WhereNode
     whereP = do
-        stringWithoutCaseSensitive "where "
+        stringWithoutCaseSensitive "where"
+        wsP
         valueTestNode <- valueTestP
         return $ WhereNode valueTestNode
 
     valueTestP :: Parsec String () ValueTestNode 
     valueTestP = do
         value1 <- valueP 
-        comparison <- between (char ' ') (char ' ') $ do
+        spaces
+        comparison <- do
             (char '=' >> return Eq)
             <|> (char '>' >> option Gt (char '=' >> return GtOrEq))
             <|> (char '<' >> option Lt ((char '>' >> return NotEq) <|> (char '=' >> return LtOrEq)))
+        spaces
         value2 <- valueP 
         return $ ValueTestNode value1 comparison value2
     
@@ -198,5 +203,6 @@ module SimpleSQLEngine where
 
     sqlEngine :: Database -> String -> [Row]
     sqlEngine database query = 
-        evalQuery queryNode database
-        where queryNode = case parse queryP "" query of Right q -> q
+        case parse queryP "" query of
+            Right queryNode -> evalQuery queryNode database
+            Left e -> error $ show e
