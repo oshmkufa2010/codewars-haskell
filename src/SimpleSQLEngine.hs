@@ -53,6 +53,7 @@ module SimpleSQLEngine where
 
     queryP :: Parsec String () QueryNode
     queryP = do
+        wsP
         selectNode <- selectP
         wsP
         fromNode <- fromP
@@ -116,10 +117,10 @@ module SimpleSQLEngine where
 
     constP :: Parsec String () Const
     constP = between (char '\'') (char '\'' >> notFollowedBy (char '\'')) $ do
-        let strP = many $ noneOf ['\n', '.', '\'']
+        let strP = many $ noneOf ['\n', '\'']
             in chainl1 strP $ do
-                    quotedValue <- between (try $ string "''") (try $ string "''") strP
-                    return $ \a b -> a ++ "'" ++ quotedValue ++ "'" ++ b
+                    try (string "''")
+                    return $ \a b -> a ++ "'" ++ b
     
     type Row = [(ColumnName, Const)]
     type Relation = [(TableName, Row)]
