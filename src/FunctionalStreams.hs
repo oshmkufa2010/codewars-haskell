@@ -59,7 +59,7 @@ module FunctionalStreams where
     takeS :: Int -> Stream a -> [a]
     takeS i s
         | i <= 0 = []
-        | (x :> xs) <- s = (x : takeS (i - 1) xs)
+        | (x :> xs) <- s = x : takeS (i - 1) xs
     
     -- | Drop a given amount of elements from a stream.
     dropS :: Int -> Stream a -> Stream a
@@ -76,7 +76,7 @@ module FunctionalStreams where
     
     -- | Combine two streams with a function.
     zipWithS :: (a -> b -> c) -> Stream a -> Stream b -> Stream c
-    zipWithS f (x :> xs) (y :> ys) = (f x y) :> zipWithS f xs ys
+    zipWithS f (x :> xs) (y :> ys) = f x y :> zipWithS f xs ys
     
     zipS :: Stream a -> Stream b -> Stream (a, b)
     zipS = zipWithS (,)
@@ -99,5 +99,5 @@ module FunctionalStreams where
     
     -- | The stream of prime numbers.
     primeS :: Stream Integer
-    primeS = sieve $ (2 :> fromStepS 3 2)
-        where sieve (p :> ps) = p :> sieve (filterS (\x -> x `mod` p > 0) $ ps)
+    primeS = sieve (2 :> fromStepS 3 2)
+        where sieve (p :> ps) = p :> sieve (filterS (\x -> x `mod` p > 0) ps)
