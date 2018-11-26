@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module ApplicativeParser where
 
     import Data.Char
@@ -10,7 +12,7 @@ module ApplicativeParser where
 
     -- | Change the result of a parser.
     pmap :: (a -> b) -> Parser a -> Parser b
-    pmap f (P p) = P $ (map $ \(s', a) -> (s', f a)) . p 
+    pmap f (P p) = P $ map (\(s', a) -> (s', f a)) . p 
     
     -- | Operator version of 'pmap'.
     (<#>) :: (a -> b) -> Parser a -> Parser b
@@ -25,11 +27,10 @@ module ApplicativeParser where
     
     -- | Parse a character only when a predicate matches.
     predP :: (Char -> Bool) -> Parser Char
-    predP f = P $ \s ->
-        case s of
-            [] -> []
-            (x:xs) -> if f x then [(xs, x)] else []
-    
+    predP f = P $ \case
+        [] -> []
+        (x:xs) -> [(xs, x) | f x]
+
     -- | Succeed only when parsing the given character.
     charP :: Char -> Parser Char
     charP = predP . (==)
@@ -63,11 +64,11 @@ module ApplicativeParser where
     
     -- | Construct a parser that never parses anything.
     emptyP :: Parser a
-    emptyP = P $ \s -> []
+    emptyP = P $ const []
     
     -- | Combine two parsers: When given an input, provide the results of both parser run on the input.
     (<<>>) :: Parser a -> Parser a -> Parser a
-    pl <<>> pr = P $ \s -> (unP pl s) ++ (unP pr s)
+    pl <<>> pr = P $ \s -> unP pl s ++ unP pr s
     
     infixl 3 <<>>
     
@@ -82,13 +83,13 @@ module ApplicativeParser where
     
     -- | Apply a parser and return all ambiguous results, but only those where the input was fully consumed.
     runParser :: Parser a -> String -> [a]
-    runParser p cs = map (\(_, a) -> a) $ filter (\(s, _) -> s == "") $ unP p cs
+    runParser p cs = map snd $ filter ((== "") . fst) $ unP p cs
     
     -- | Apply a parser and only return a result, if there was only one unambiguous result with output fully consumed.
     runParserUnique :: Parser a -> String -> Maybe a
     runParserUnique p cs = case runParser p cs of
-        (a:[]) -> Just a
-        otherwise -> Nothing
+        [a] -> Just a
+        _ -> Nothing
     
     -- | Kinds of binary operators.
     data BinOp = AddBO | MulBO deriving (Eq, Show)

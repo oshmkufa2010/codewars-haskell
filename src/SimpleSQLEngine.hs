@@ -27,8 +27,8 @@ module SimpleSQLEngine where
     type Const = String
 
     data QueryNode = QueryNode SelectNode FromNode [JoinNode] WhereNode deriving (Show)
-    data SelectNode = SelectNode [ColumnIDNode] deriving (Show)
-    data FromNode = FromNode TableName deriving (Show)
+    newtype SelectNode = SelectNode [ColumnIDNode] deriving (Show)
+    newtype FromNode = FromNode TableName deriving (Show)
     data JoinNode = JoinNode TableName ValueTestNode deriving (Show)
     data WhereNode = WhereNode ValueTestNode | EmptyWhereNode deriving (Show)
     data ValueTestNode = ValueTestNode Value Comparison Value deriving (Show)
@@ -190,7 +190,7 @@ module SimpleSQLEngine where
 
             (columnName, value) <- row
 
-            guard $ (map toLower columnName) == selectColumnName && (map toLower tableName) == selectTableName 
+            guard $ map toLower columnName == selectColumnName && map toLower tableName == selectTableName 
 
             return (tableName ++ "." ++ columnName, value)
 

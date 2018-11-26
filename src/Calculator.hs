@@ -13,7 +13,7 @@ evaluate s = case parse (expressParser <* eof) "" s of
               
 integerParser :: Parsec String () String
 integerParser = do
-    ingeters <- many1 digit `sepEndBy1` (many1 $ char ' ')
+    ingeters <- many1 digit `sepEndBy1` many1 (char ' ')
     return $ foldl1 (++) ingeters
 
 mulOpParser :: Parsec String () (Double -> Double -> Double)
@@ -37,9 +37,9 @@ doubleParser = do
     value <-
         if doubt == '.' then do
             spaces
-            float <- option "0" $ integerParser
+            float <- option "0" integerParser
             return $ int ++ "." ++ float
-        else do
+        else
             return int
 
     return $ read value 
@@ -47,7 +47,7 @@ doubleParser = do
 factorParser :: Parsec String () Double
 factorParser = do
     spaces
-    sym <- option '+' $ (char '+' <|> char '-')
+    sym <- option '+' $ char '+' <|> char '-'
     spaces
     value <- between (char '(') (char ')') expressParser <|> doubleParser
     spaces
