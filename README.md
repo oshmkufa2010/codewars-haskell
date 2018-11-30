@@ -1,4 +1,5 @@
 # codewars-haskell-solutions
+[![Build Status](https://travis-ci.org/oshmkufa2010/codewars-haskell.svg?branch=master)](https://travis-ci.org/oshmkufa2010/codewars-haskell)
 
 - [x] [Simple SQL Engine](https://www.codewars.com/kata/5451712ea8a825a74f000863)
 
