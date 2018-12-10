@@ -20,6 +20,7 @@ module CoroutineSpec where
     spec :: Spec
     spec = do
         describe "Library functions" $ do
+            it "monad" $ consume (output 1>>=const (output 2)) `shouldBe` [1,2]
             it "output" $ do
                 consume (output 5) `shouldBe` [5]
                 consume (output ()) `shouldBe` [()]

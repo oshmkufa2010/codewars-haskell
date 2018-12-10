@@ -66,10 +66,8 @@ module Coroutine where
     
     consume :: Coroutine [t] u t a -> [t]
     consume c = apply c $ \case
-      Done _ -> [] 
       Out t nextCoroutine -> t : consume nextCoroutine
-      -- In resume -> consume $ Coroutine $ \k -> k (In (produce . consume . resume ))
-      In _ -> []
+      _ -> []
     
     filterC :: (v -> Bool) -> Coroutine r v v ()
     filterC p = Coroutine $ \k ->
