@@ -14,6 +14,6 @@
 
 - [x] [Calculator](https://www.codewars.com/kata/5235c913397cbf2508000048)
 
-- [ ] [Odd + Even = Odd? Prove it!](https://www.codewars.com/kata/599d973255342a0ce400009b)
+- [x] [Odd + Even = Odd? Prove it!](https://www.codewars.com/kata/599d973255342a0ce400009b)
 
 - [x] [Coroutines](https://www.codewars.com/kata/coroutines)
