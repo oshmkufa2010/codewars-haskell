@@ -24,6 +24,8 @@ dependencies:
 - hspec
 - QuickCheck
 - parsec
+- containers
+- mtl
 
 library:
   source-dirs: src
