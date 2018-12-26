@@ -6,6 +6,7 @@ module Transpiler where
   import Data.List
   import Control.Monad
   import Control.Applicative
+  import Control.Monad.State
   
   alpha :: String
   alpha = ['a'..'z'] ++ ['A'..'Z']
@@ -27,39 +28,14 @@ module Transpiler where
   -------------- your parser combinator ---------------
   -----------------------------------------------------
   
-  type Token = String
+  type Parser val = StateT [String] [] val
 
-  newtype Parser val = Parser { parse :: [Token] -> [(val, [Token])]  }
-
-  instance Functor Parser where
-    fmap f (Parser p) = Parser $ \s ->
-      [(f v, s') | (v, s') <- p s]
-
-  instance Applicative Parser where
-    -- pure :: val -> Parser val
-    pure v = Parser $ \s -> [(v, s)]
-    -- (<*>) :: Parser (a -> b) -> Parser a -> Parser b
-    Parser f <*> Parser p = Parser $ \s ->
-      [(f v', s'') | (f, s') <- f s, (v', s'') <- p s']
-  
-  instance Monad Parser where
-    return = pure
-    -- (>>=) :: Parser a -> (a -> Parser b) -> Parser b
-    Parser pa >>= f = Parser $ \tokens ->
-      [(b, tokens'') | (a, tokens') <- pa tokens, (b, tokens'') <- parse (f a) tokens']
-      
-  instance Alternative Parser where
-    -- empty :: f a
-    empty = Parser $ const []
-    -- (<|>) :: f a -> f a -> f a
-    Parser a <|> Parser b = Parser $ \s -> a s ++ b s
-
-  predP :: (Token -> Bool) -> Parser Token
-  predP f = Parser $ \case
+  predP :: (String -> Bool) -> Parser String
+  predP f = StateT $ \case
       [] -> []
       (token:tokens) -> [(token, tokens) | f token]
   
-  parseToken :: Token -> Parser Token 
+  parseToken :: String -> Parser String 
   parseToken t = predP (== t) 
 
   (<~>) :: Alternative a => a b -> a b -> a b
@@ -70,7 +46,7 @@ module Transpiler where
     case filter ((== []) . snd) result of
       [(res, _)] -> Right res
       _           -> Left "Hugh?"
-    where result = parse m (tokenize s)
+    where result = runStateT m (tokenize s)
 
   option :: val -> Parser val -> Parser val
   option x p = p <|> pure x
