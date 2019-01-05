@@ -10,7 +10,7 @@ type Index = Int
 newtype Variable = Variable Index
 newtype Lit = Lit Integer
 type Env = Map Index Integer
-type ImpreativeMonad = State Env
+type ImpreativeExpr = State Env
 
 class Value v where
   evalValue :: v -> Env -> Integer 
@@ -21,10 +21,10 @@ instance Value Variable where
 instance Value Lit where
   evalValue (Lit value) _ = value
 
-def :: Value v => ImpreativeMonad v -> Integer
+def :: Value v => ImpreativeExpr v -> Integer
 def m = let (v, env) = runState m empty in evalValue v env
 
-var :: Integer -> ImpreativeMonad Variable
+var :: Integer -> ImpreativeExpr Variable
 var v = do
   env <- get
   let index = length env
@@ -34,7 +34,7 @@ var v = do
 lit :: Integer -> Lit
 lit = Lit
 
-while :: Value v => v -> (Integer -> Bool) -> ImpreativeMonad () -> ImpreativeMonad () 
+while :: Value v => v -> (Integer -> Bool) -> ImpreativeExpr () -> ImpreativeExpr () 
 while r f act = do
   env <- get
   let value = evalValue r env
@@ -43,7 +43,7 @@ while r f act = do
     put env'
     while r f act
 
-assignWithOp :: Value v => (Integer -> Integer -> Integer) -> Variable -> v -> ImpreativeMonad ()
+assignWithOp :: Value v => (Integer -> Integer -> Integer) -> Variable -> v -> ImpreativeExpr ()
 assignWithOp op (Variable index) b = do
   env <- get
   let
@@ -52,7 +52,7 @@ assignWithOp op (Variable index) b = do
     env' = insert index (op val1 val2) env
     in put env'
 
-(+=), (-=), (*=) :: Value v => Variable -> v -> ImpreativeMonad ()
+(+=), (-=), (*=) :: Value v => Variable -> v -> ImpreativeExpr ()
 
 (+=) = assignWithOp (+)
 (-=) = assignWithOp (-)
