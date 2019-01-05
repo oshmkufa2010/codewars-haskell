@@ -4,49 +4,55 @@ module Imperative (
 
 import Data.Map
 import Control.Monad.State
-data Variable = Index Int | Lit Integer
-type ImpreativeMonad = State (Map Int Integer)
 
-def :: ImpreativeMonad Variable -> Integer
-def m = case v of
-  Index index -> env ! index
-  Lit value -> value
-  where (v, env) = runState m empty
+type Index = Int
+
+newtype Variable = Variable Index
+newtype Lit = Lit Integer
+type Env = Map Index Integer
+type ImpreativeMonad = State Env
+
+class Value v where
+  evalValue :: v -> Env -> Integer 
+
+instance Value Variable where
+  evalValue (Variable index) env = env ! index
+
+instance Value Lit where
+  evalValue (Lit value) _ = value
+
+def :: Value v => ImpreativeMonad v -> Integer
+def m = let (v, env) = runState m empty in evalValue v env
 
 var :: Integer -> ImpreativeMonad Variable
 var v = do
   env <- get
   let index = length env
   put $ insert index v env
-  return $ Index index
+  return $ Variable index
 
-lit :: Integer -> Variable
+lit :: Integer -> Lit
 lit = Lit
 
-while :: Variable -> (Integer -> Bool) -> ImpreativeMonad () -> ImpreativeMonad () 
+while :: Value v => v -> (Integer -> Bool) -> ImpreativeMonad () -> ImpreativeMonad () 
 while r f act = do
   env <- get
-  let
-    value = case r of
-      Index i -> env ! i
-      Lit v -> v
-    in
-      when (f value) $
-        let (_, env') = runState act env in put env' >> while r f act
-        
+  let value = evalValue r env
+  when (f value) $ do
+    let (_, env') = runState act env
+    put env'
+    while r f act
 
-assignWithOp :: (Integer -> Integer -> Integer) -> Variable -> Variable -> ImpreativeMonad ()
-assignWithOp op (Index index) b = do
+assignWithOp :: Value v => (Integer -> Integer -> Integer) -> Variable -> v -> ImpreativeMonad ()
+assignWithOp op (Variable index) b = do
   env <- get
   let
     val1 = env ! index
-    val2 = case b of
-      Index i -> env ! i
-      Lit v -> v
+    val2 = evalValue b env
     env' = insert index (op val1 val2) env
     in put env'
 
-(+=), (-=), (*=) :: Variable -> Variable -> ImpreativeMonad ()
+(+=), (-=), (*=) :: Value v => Variable -> v -> ImpreativeMonad ()
 
 (+=) = assignWithOp (+)
 (-=) = assignWithOp (-)
