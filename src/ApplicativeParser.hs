@@ -24,6 +24,11 @@ module ApplicativeParser where
     
     infixl 4 <#>
     infixl 4 <#
+
+    anyChar :: Parser Char
+    anyChar = P $ \case
+        [] -> []
+        (x:xs) -> [(xs, x)]
     
     -- | Parse a character only when a predicate matches.
     predP :: (Char -> Bool) -> Parser Char
@@ -44,9 +49,12 @@ module ApplicativeParser where
     -- value.
     (<@>) :: Parser (a -> b) -> Parser a -> Parser b
     P pf <@> P pa = P $ \s ->
-        let
-            fs = pf s
-            in [(s'', f a) | (s', f) <- fs, (s'', a) <- pa s']
+        do
+            (s', f) <- pf s
+            (s'', a) <- pa s'
+
+            return (s'', f a)
+
     
     (<@) :: Parser a -> Parser b -> Parser a
     pa <@ pb = const <#> pa <@> pb
