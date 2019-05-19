@@ -26,6 +26,7 @@ dependencies:
 - parsec
 - containers
 - mtl
+- contravariant
 
 library:
   source-dirs: src
